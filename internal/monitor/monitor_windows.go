@@ -10,51 +10,53 @@ import (
 )
 
 var (
-	user32               = windows.NewLazySystemDLL("user32.dll")
+	user32                  = windows.NewLazySystemDLL("user32.dll")
 	procEnumDisplayMonitors = user32.NewProc("EnumDisplayMonitors")
-	procGetMonitorInfo      = user32.NewProc("GetMonitorInfoW")
+	procGetMonitorInfoW     = user32.NewProc("GetMonitorInfoW")
 )
 
 const monitorInfoFPrimary = 0x00000001
 
+// matches MONITORINFO from winuser.h
 type monitorInfo struct {
 	cbSize    uint32
-	rcMonitor rect
-	rcWork    rect
+	rcMonitor rect32
+	rcWork    rect32
 	dwFlags   uint32
 }
 
-type rect struct {
-	left, top, right, bottom int32
+type rect32 struct {
+	Left, Top, Right, Bottom int32
 }
 
+// primaryResult is passed by pointer through the EnumDisplayMonitors callback.
+// EnumDisplayMonitors is synchronous so the GC will not move it during the call.
 type primaryResult struct {
-	width  int
-	height int
-	found  bool
+	width, height int
+	found         bool
 }
 
-func enumProc(hMonitor, _ uintptr, _ *rect, data uintptr) uintptr {
-	result := (*primaryResult)(unsafe.Pointer(data))
-	var mi monitorInfo
-	mi.cbSize = uint32(unsafe.Sizeof(mi))
-	procGetMonitorInfo.Call(hMonitor, uintptr(unsafe.Pointer(&mi)))
-	if mi.dwFlags&monitorInfoFPrimary != 0 {
-		result.width = int(mi.rcMonitor.right - mi.rcMonitor.left)
-		result.height = int(mi.rcMonitor.bottom - mi.rcMonitor.top)
-		result.found = true
-	}
-	return 1
-}
-
+// PrimaryMonitor returns the pixel dimensions of the Windows primary display.
 func PrimaryMonitor() (width, height int, err error) {
-	result := &primaryResult{}
-	cb := windows.NewCallback(func(hMonitor, hdc uintptr, lpRect *rect, data uintptr) uintptr {
-		return enumProc(hMonitor, hdc, lpRect, data)
+	res := &primaryResult{}
+
+	cb := windows.NewCallback(func(hMonitor, _, _, data uintptr) uintptr {
+		r := (*primaryResult)(unsafe.Pointer(data))
+		var mi monitorInfo
+		mi.cbSize = uint32(unsafe.Sizeof(mi))
+		procGetMonitorInfoW.Call(hMonitor, uintptr(unsafe.Pointer(&mi)))
+		if mi.dwFlags&monitorInfoFPrimary != 0 {
+			r.width = int(mi.rcMonitor.Right - mi.rcMonitor.Left)
+			r.height = int(mi.rcMonitor.Bottom - mi.rcMonitor.Top)
+			r.found = true
+		}
+		return 1 // continue enumeration
 	})
-	procEnumDisplayMonitors.Call(0, 0, cb, uintptr(unsafe.Pointer(result)))
-	if !result.found {
+
+	procEnumDisplayMonitors.Call(0, 0, cb, uintptr(unsafe.Pointer(res)))
+
+	if !res.found {
 		return 0, 0, fmt.Errorf("primary monitor not found")
 	}
-	return result.width, result.height, nil
+	return res.width, res.height, nil
 }
