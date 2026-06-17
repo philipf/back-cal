@@ -23,7 +23,7 @@ func Set(path string) error {
 	// Set wallpaper style to "Fit" (no scaling) since canvas matches screen resolution
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Control Panel\Desktop`, registry.SET_VALUE)
 	if err == nil {
-		k.SetStringValue("WallpaperStyle", "6")
+		k.SetStringValue("WallpaperStyle", "0") // Center; canvas already matches screen size
 		k.SetStringValue("TileWallpaper", "0")
 		k.Close()
 	}
