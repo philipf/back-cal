@@ -93,6 +93,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		MonitorWidth:  width,
 		MonitorHeight: height,
 		BgColor:       viper.GetString("canvas.background_color"),
+		Scale:         viper.GetFloat64("canvas.scale"),
 		PaddingTop:    viper.GetInt("padding.top"),
 		PaddingRight:  viper.GetInt("padding.right"),
 		OutputPath:    wallpaperPath,

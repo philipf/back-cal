@@ -72,6 +72,10 @@ canvas:
   # Hex colour for the full-screen background canvas (e.g. "#000000" for black)
   background_color: "#000000"
 
+  # Scale factor applied to the calendar image before compositing.
+  # 1 = native size as returned by the API, 0.5 = half size, 2 = double size.
+  scale: 1
+
 padding:
   # Distance in pixels from the top edge of the screen to the calendar image
   top: 20

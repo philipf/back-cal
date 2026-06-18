@@ -13,13 +13,15 @@ import (
 	"strings"
 
 	"golang.org/x/image/bmp"
+	xdraw "golang.org/x/image/draw"
 )
 
 // Config holds compositing parameters.
 type Config struct {
 	MonitorWidth  int
 	MonitorHeight int
-	BgColor       string // hex color, e.g. "#000000"
+	BgColor       string  // hex color, e.g. "#000000"
+	Scale         float64 // multiplier applied to the calendar image; 1 = native size
 	PaddingTop    int
 	PaddingRight  int
 	OutputPath    string
@@ -44,6 +46,8 @@ func Composite(src image.Image, cfg Config) error {
 	canvas := image.NewRGBA(image.Rect(0, 0, cfg.MonitorWidth, cfg.MonitorHeight))
 	draw.Draw(canvas, canvas.Bounds(), image.NewUniform(bg), image.Point{}, draw.Src)
 
+	src = scale(src, cfg.Scale)
+
 	srcBounds := src.Bounds()
 	x := cfg.MonitorWidth - srcBounds.Dx() - cfg.PaddingRight
 	y := cfg.PaddingTop
@@ -63,6 +67,26 @@ func Composite(src image.Image, cfg Config) error {
 		return fmt.Errorf("encoding PNG: %w", err)
 	}
 	return nil
+}
+
+// scale resizes src by factor using high-quality resampling. A factor <= 0 or
+// equal to 1 returns src unchanged (native size).
+func scale(src image.Image, factor float64) image.Image {
+	if factor <= 0 || factor == 1 {
+		return src
+	}
+	b := src.Bounds()
+	w := int(float64(b.Dx())*factor + 0.5)
+	h := int(float64(b.Dy())*factor + 0.5)
+	if w < 1 {
+		w = 1
+	}
+	if h < 1 {
+		h = 1
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	xdraw.CatmullRom.Scale(dst, dst.Bounds(), src, b, xdraw.Over, nil)
+	return dst
 }
 
 func parseHexColor(s string) (color.RGBA, error) {

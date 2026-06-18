@@ -36,6 +36,7 @@ func initConfig() {
 
 	viper.SetDefault("api.url", "https://gotta-go.notnot.uk/v1/frame")
 	viper.SetDefault("canvas.background_color", "#000000")
+	viper.SetDefault("canvas.scale", 1.0)
 	viper.SetDefault("padding.top", 20)
 	viper.SetDefault("padding.right", 20)
 

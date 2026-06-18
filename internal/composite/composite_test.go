@@ -107,6 +107,62 @@ func TestComposite_CalendarTopRight(t *testing.T) {
 	assertColor(t, result, 95, 5, black)  // right padding area
 }
 
+func TestComposite_ScaleResizesCalendar(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "wallpaper.png")
+
+	red := color.RGBA{R: 255, A: 255}
+
+	// 20x10 red calendar scaled 2x -> 40x20, top-right on a 200x100 canvas, no padding
+	src := solidImage(20, 10, red)
+	cfg := composite.Config{
+		MonitorWidth:  200,
+		MonitorHeight: 100,
+		BgColor:       "#000000",
+		Scale:         2,
+		OutputPath:    out,
+	}
+
+	if err := composite.Composite(src, cfg); err != nil {
+		t.Fatalf("Composite: %v", err)
+	}
+
+	result := loadPNG(t, out)
+
+	// Scaled calendar occupies x in [160,199], y in [0,19].
+	// Centre pixels are solidly red regardless of edge resampling.
+	assertColor(t, result, 180, 10, red)
+	// A pixel beyond the scaled height stays background.
+	assertColor(t, result, 180, 25, color.RGBA{A: 255})
+}
+
+func TestComposite_ScaleZeroIsNativeSize(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "wallpaper.png")
+
+	red := color.RGBA{R: 255, A: 255}
+
+	// Scale 0 (unset default) must behave as native size: 20x10 at top-right.
+	src := solidImage(20, 10, red)
+	cfg := composite.Config{
+		MonitorWidth:  100,
+		MonitorHeight: 80,
+		BgColor:       "#000000",
+		Scale:         0,
+		PaddingTop:    5,
+		PaddingRight:  5,
+		OutputPath:    out,
+	}
+
+	if err := composite.Composite(src, cfg); err != nil {
+		t.Fatalf("Composite: %v", err)
+	}
+
+	result := loadPNG(t, out)
+	assertColor(t, result, 75, 5, red)  // top-left of calendar at native position
+	assertColor(t, result, 94, 14, red) // bottom-right of calendar at native position
+}
+
 func TestComposite_BackgroundColor(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "wallpaper.png")
